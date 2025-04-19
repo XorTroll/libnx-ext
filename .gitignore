@@ -1,0 +1,9 @@
+debug/
+release/
+lib/
+build/
+.vscode/
+dev/
+*.elf
+*.nacp
+*.nro
