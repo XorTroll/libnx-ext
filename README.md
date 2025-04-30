@@ -12,6 +12,6 @@ This repository contains some custom extensions to [libnx Nintendo Switch C home
 
 ## Examples
 
-- [cruiser-example](cruiser-example/): example of using WKC from homebrew
+- [cruiser-example](examples/cruiser-example/): example of using WKC from homebrew
 
 Check out each of their READMEs for more details.

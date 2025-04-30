@@ -17,6 +17,7 @@ start: /dll/{mod}.nro
 11.0.0: /dll_X/ is now /nro/netfront/dll_X/
 12.1.0: dll_X renamed to core_X (core_0 and core_1)
 14.0.0: /nro/netfront/core_{0,1}/ are now /nro/netfront/core_{0,2}/default/cfi_{dis,en}enabled/
+20.0.0: /nro/netfront/core_{0,2}/default/cfi_{dis,en}enabled/ are now /nro/netfront/core_{0,3}/default/cfi_{dis,en}enabled/
 
 */
 
@@ -56,6 +57,10 @@ char g_BrowserDllNroPaths_6[OssBrowserDllKind_Count][64] = {
     "nro/netfront/core_0/default/cfi_disabled",
     "nro/netfront/core_2/default/cfi_enabled",
 };
+char g_BrowserDllNroPaths_7[OssBrowserDllKind_Count][64] = {
+    "nro/netfront/core_0/default/cfi_disabled",
+    "nro/netfront/core_3/default/cfi_enabled",
+};
 
 NX_INLINE bool _ossIsBrowserDllNroLz4Compressed(void) {
     return hosversionAtLeast(5,0,0);
@@ -65,7 +70,10 @@ static void _ossFormatBrowserDllNroPath(char *out_path, size_t out_path_size, Os
     char nro_name[128];
     snprintf(nro_name, sizeof(nro_name), "%s.%s", g_BrowserDllNroNames[nro], _ossIsBrowserDllNroLz4Compressed() ? "nro.lz4" : "nro");
 
-    if(hosversionAtLeast(14,0,0)) {
+    if(hosversionAtLeast(20,0,0)) {
+        snprintf(out_path, out_path_size, BROWSERDLL_MOUNT_NAME ":/%s/%s", g_BrowserDllNroPaths_7[kind], nro_name);
+    }
+    else if(hosversionAtLeast(14,0,0)) {
         snprintf(out_path, out_path_size, BROWSERDLL_MOUNT_NAME ":/%s/%s", g_BrowserDllNroPaths_6[kind], nro_name);
     }
     else if(hosversionAtLeast(12,1,0)) {

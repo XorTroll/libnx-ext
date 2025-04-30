@@ -65,7 +65,7 @@ LIBS	:= -Wl,--whole-archive -lnx-cruiser -Wl,--no-whole-archive -lnx-ld -lnx-ext
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:= $(PORTLIBS) $(LIBNX) $(CURDIR)/../libnx-ext $(CURDIR)/../libnx-ld $(CURDIR)/../libnx-cruiser 
+LIBDIRS	:= $(PORTLIBS) $(LIBNX) $(CURDIR)/../../libnx-ext $(CURDIR)/../../libnx-ld $(CURDIR)/../../libnx-cruiser 
 
 
 #---------------------------------------------------------------------------------
@@ -161,9 +161,9 @@ endif
 all: libs $(BUILD)
 
 libs:
-	@$(MAKE) -C $(CURDIR)/../libnx-ext
-	@$(MAKE) -C $(CURDIR)/../libnx-ld
-	@$(MAKE) -C $(CURDIR)/../libnx-cruiser
+	@$(MAKE) -C $(CURDIR)/../../libnx-ext
+	@$(MAKE) -C $(CURDIR)/../../libnx-ld
+	@$(MAKE) -C $(CURDIR)/../../libnx-cruiser
 
 $(BUILD): libs
 	@[ -d $@ ] || mkdir -p $@
@@ -171,9 +171,9 @@ $(BUILD): libs
 
 #---------------------------------------------------------------------------------
 cleanlibs:
-	@$(MAKE) -C $(CURDIR)/../libnx-ext clean
-	@$(MAKE) -C $(CURDIR)/../libnx-ld clean
-	@$(MAKE) -C $(CURDIR)/../libnx-cruiser clean
+	@$(MAKE) -C $(CURDIR)/../../libnx-ext clean
+	@$(MAKE) -C $(CURDIR)/../../libnx-ld clean
+	@$(MAKE) -C $(CURDIR)/../../libnx-cruiser clean
 
 clean: cleanlibs
 	@echo clean ...
