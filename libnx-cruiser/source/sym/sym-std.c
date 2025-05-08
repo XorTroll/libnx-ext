@@ -9,7 +9,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <pthread.h>
-#include <setjmp.h>
+// #include <setjmp.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
 #include <sys/iosupport.h>
@@ -72,8 +72,8 @@ SYM_SYMBOL void *g_ForceExposeStdSymbols[] = {
     &nextafterf,
     &lrint,
     &qsort,
-    &setjmp,
-    &longjmp,
+    // &setjmp,
+    // &longjmp,
     &__cxa_pure_virtual,
     &__cxa_guard_acquire,
     &__cxa_guard_release,

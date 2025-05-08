@@ -32,12 +32,15 @@ extern "C" Result cruiserInitialize(void) {
     _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC19WKCWebKitInitializeEPvmmS0_mRNS_21WKCMemoryEventHandlerERNS_20WKCTimerEventHandlerE", WKC::WKCWebKitInitialize);
     _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC8WKCPrefs13setThreadInfoEPvS1_", WKC::WKCPrefs::setThreadInfo);
     _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC8WKCPrefs12setStackSizeEj", WKC::WKCPrefs::setStackSize);
+    _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC8WKCPrefs16setSystemStringsEPKNS_14SystemStrings_E", WKC::WKCPrefs::setSystemStrings);
     _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC28WKCWebKitSetMediaPlayerProcsEPK20WKCMediaPlayerProcs_", WKC::WKCWebKitSetMediaPlayerProcs);
     _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC23WKCWebKitSetThreadProcsEPK15WKCThreadProcs_", WKC::WKCWebKitSetThreadProcs);
     _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC4Heap16GetAvailableSizeEv", WKC::Heap::GetAvailableSize);
     _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC4Heap24GetMaxAvailableBlockSizeEv", WKC::Heap::GetMaxAvailableBlockSize);
     _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC4Heap32SetJSRegisterFileDefaultCapacityEj", WKC::Heap::SetJSRegisterFileDefaultCapacity);
     _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC4Heap28GetJSHeapAllocatedBlockBytesEv", WKC::Heap::GetJSHeapAllocatedBlockBytes);
+    _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC4Heap27GetStatisticsFreeSizeInHeapEv", WKC::Heap::GetStatisticsFreeSizeInHeap);
+    _CRUISER_TRY_LOAD_SYMBOL("_ZN3WKC4Heap13GetStatisticsERNS0_11Statistics_Em", WKC::Heap::GetStatistics);
     return R_SUCCESS;
 }
 

@@ -91,7 +91,7 @@ namespace WKC {
         // notifies stack overflow.
         // applications should do exit at this calling if need_restart is true.
         /**
-         @brief Notifies of stack overflow
+        @brief Notifies of stack overflow
         @param need_restart Notification whether restart is required
         - true  Restart is required.
         - false Restart is not required.
@@ -192,6 +192,28 @@ namespace WKC {
     */
     CRUISER_API(void (*WKCWebKitFinalize)());
 
+    /** @brief Structure for storing system string data */
+    struct SystemStrings {
+        /** @brief platform property of JavaScript Navigator object */
+        const unsigned short* fNavigatorPlatform;
+        /** @brief product property of JavaScript Navigator object */
+        const unsigned short* fNavigatorProduct;
+        /** @brief productSub property of JavaScript Navigator object */
+        const unsigned short* fNavigatorProductSub;
+        /** @brief vendor property of JavaScript Navigator object */
+        const unsigned short* fNavigatorVendor;
+        /** @brief vendorSub property of JavaScript Navigator object */
+        const unsigned short* fNavigatorVendorSub;
+        /** @brief System language */
+        const unsigned short* fLanguage;
+        /** @brief Button text of input element for which type="submit" is specified */
+        const unsigned short* fButtonLabelSubmit;
+        /** @brief Button text of input element for which type="reset" is specified */
+        const unsigned short* fButtonLabelReset;
+        /** @brief Button text of input element for which type="file" is specified */
+        const unsigned short* fButtonLabelFile;
+    };
+
     namespace WKCPrefs {
 
         // https://github.com/syvb/switch-oss/blob/master/WKC_2.26.0/WebKit/WKC/webkit/WKCPrefs.h
@@ -220,6 +242,27 @@ namespace WKC {
         */
         CRUISER_API(void (*setStackSize)(unsigned int in_stack_size));
 
+        /**
+        @brief Sets system strings
+        @param strings System strings
+        @retval None
+        @details
+        The strings set by this function are copied internally.
+        @attention
+        Always call and set this when creating the browser instance. @n
+        If this function is not called, or if NULL is set for a member of WKC::SystemStrings and called, then the following values will be set as default values for system strings. @n
+        - platform property of JavaScript Navigator object (WKC::SystemStrings::fNavigatorPlatform) … "" (empty string)
+        - product property of JavaScript Navigator object (WKC::SystemStrings::fNavigatorProduct) … "" (empty string)
+        - productSub property of JavaScript Navigator object (WKC::SystemStrings::fNavigatorProductSub) … "" (empty string)
+        - vendor property of JavaScript Navigator object (WKC::SystemStrings::fNavigatorVendor) … "" (empty string)
+        - vendorSub property of JavaScript Navigator object (WKC::SystemStrings::fNavigatorVendorSub) … "" (empty string)
+        - System language (WKC::SystemStrings::fLanguage) … " en "
+        - Button text of input element for which type="submit" is specified (WKC::SystemStrings::fButtonLabelSubmit) … "Submit"
+        - Button text of input element for which type="reset" is specified (WKC::SystemStrings::fButtonLabelReset) … "Reset"
+        - Button text of input element for which type="file" is specified (WKC::SystemStrings::fButtonLabelFile) … "Choose File"
+        */
+        CRUISER_API(void (*setSystemStrings)(const SystemStrings *strings));
+
     }
 
     // https://github.com/syvb/switch-oss/blob/master/WKC_2.26.0/WebKit/WKC/webkit/WKCWebView.h
@@ -229,7 +272,7 @@ namespace WKC {
 
     namespace Heap {
 
-        // https://github.com/syvb/switch-oss/blob/master/WKC_2.26.0/WebKit/WKC/webkit/WKCMemoryInfo.h
+        // https://github.com/syvb/switch-oss/tree/b7f486be1210b9f6d216d334e472b56bee818923/WKC_2.26.0/WebKit/WKC/webkit/WKCMemoryInfo.h
 
         /**
         @brief Gets amount of browser engine heap available
@@ -256,6 +299,69 @@ namespace WKC {
         @return size_t Size of memory allocatad for JavaScript heap (bytes)
         */
         CRUISER_API(size_t (*GetJSHeapAllocatedBlockBytes)());
+
+        CRUISER_API(size_t (*GetStatisticsFreeSizeInHeap)());
+
+        /** @brief Structure for storing memory usage statistics of engine heap (TCMalloc) */
+        struct Statistics {
+            /** @brief Consuming size */
+            size_t heapSize;
+            /** @brief Total size of free memory in CentralCache and ThreadCache */
+            size_t freeSizeInHeap;
+            /** @brief Total size of free memory in TCMalloc_PageHeap */
+            size_t freeSizeInCaches;
+            /** @brief Size of memory freed by TCMalloc_SystemRelease() */
+            size_t returnedSize;
+            /** @brief Page size set in TCMalloc */
+            size_t pageSize;
+            /** @brief Size of max free block in TCMalloc_PageHeap */
+            size_t maxFreeBlockSizeInHeap;
+            /** @brief Total size of free memory in CentralCache and ThreadCache of the class ID specified by classInCaches */
+            size_t classFreeSizeInCaches;
+            /** @brief Size of memory block of the class ID specified by classInCaches */
+            size_t classBlockSizeInCaches;
+            /** @brief Amount of pages required to allocate requested size of memory (see details of GetStatistics()) */
+            unsigned int pageLength;
+            /** @brief Class ID corresponding to the requested size (see details of GetStatistics()) */
+            unsigned int classInCaches;
+            /** @brief Amount of classes */
+            size_t numClasses;
+            /** @brief Amount of pages assigned to each class ID */
+            size_t* eachClassAssignedPagesInCaches;
+            /** @brief Size of free memory in ThreadCache of each class ID */
+            size_t* eachClassThreadFreeSizeInCaches;
+            /** @brief Size of free memory in CentralCache of each class ID */
+            size_t* eachClassCentralFreeSizeInCaches;
+            /** @brief Size of memory block of each class ID */
+            size_t* eachClassBlockSizeInCaches;
+            /** @brief  */
+            size_t maxPages;
+            /** @brief Size of free memory in each page */
+            size_t* eachPageFreeSizeInHeap;
+            /** @brief Size of array of largeFreeSizeInHeap */
+            unsigned int numLargeFreeSize;
+            /** @brief Max size of heap */
+            size_t maxHeapSize;
+            /** @brief Size of free memory in combined blocks of pages over pageSize */
+            size_t* largeFreeSizeInHeap;
+            /** @brief Current heap usage (See note) */
+            size_t currentHeapUsage;
+            /** @brief Current physical memory usage */
+            size_t currentPhysicalMemoryUsage;
+            /** @brief Maximum heap usage (See note) */
+            size_t maxHeapUsage;
+            size_t allocFailureCount;
+            size_t allocFailureMinSize;
+            size_t allocFailureTotalSize;
+            /* - note -
+            * It does not include the amount of heap allocated to the cache in this calculation.
+            * The reason is as follows:
+            * - Cache size is small.
+            * - Calculation process is heavy.
+            */
+        };
+
+        CRUISER_API(void (*GetStatistics)(Statistics* stat, size_t requestSize));
 
     }
 

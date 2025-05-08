@@ -1,5 +1,6 @@
 #include "log.hpp"
 #include <switch-cruiser.h>
+#include <switch-ld.h>
 #include <stdlib.h>
 
 PadState pad;
@@ -54,7 +55,8 @@ public:
     }
 
     void notifyCrash(const char* file, int line, const char* function, const char* assertion) override {
-        extLogf("[main-cb] notifyCrash: at %s:%d, function %s: '%s' failed", file, line, function, assertion);
+        extLogf("[main-cb] notifyCrash: at %s:%d, function '%s': '%s'", file, line, function, assertion);
+        finish();
     }
 
     void notifyStackOverflow(bool need_restart, size_t stack_size, size_t consumption, size_t margin, void* stack_top, void* stack_base, void* current_stack_top, const char* file, int line, const char* function) override {
@@ -63,7 +65,7 @@ public:
 
     bool allocateMemoryPages(void* ptr, size_t size) override {
         extLogf("[main-cb] allocateMemoryPages: %p, %zu", ptr, size);
-        return true;
+        return false;
     }
 
     void freeMemoryPages(void* ptr, size_t size) override {
@@ -426,11 +428,31 @@ WKCThreadProcs g_thread_procs = {
     .fFreeThreadStackProc = nullptr
 };
 
+WKC::SystemStrings g_system_strings = {
+    .fNavigatorPlatform = (const u16*)u"Dummy",
+    .fNavigatorProduct = (const u16*)u"Dummy",
+    .fNavigatorProductSub = (const u16*)u"Dummy",
+    .fNavigatorVendor = (const u16*)u"Dummy",
+    .fNavigatorVendorSub = (const u16*)u"Dummy",
+    .fLanguage = (const u16*)u"en",
+    .fButtonLabelSubmit = (const u16*)u"Submit",
+    .fButtonLabelReset = (const u16*)u"Reset",
+    .fButtonLabelFile = (const u16*)u"Choose File"
+};
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char* argv[]) {
     consoleInit(NULL);
     extSetLogFunction(customLog);
+
+    R_ASSERT(socketInitializeDefault());
+    if(nxlinkConnectToHost(true, false) < 0) {
+        extLogf("Failed to connect to nxlink!");
+        finish();
+    }
+
+    extLogf("Connected to nxlink!");
 
     // Redirect stderr, since WTF/WKC may log there
     FILE *new_stderr_log = freopen("sdmc:/cruiser-wtf-stderr.log", "w", stderr);
@@ -457,6 +479,8 @@ int main(int argc, char* argv[]) {
     WKC::WKCPrefs::setThreadInfo(nullptr, threadGetSelf()->stack_mirror);
     WKC::WKCPrefs::setStackSize(threadGetSelf()->stack_sz);
 
+    extLogf("Main thread stack size: %zu", threadGetSelf()->stack_sz);
+
     wkcSetReportArrowFunctionThisCallbackPeer(ReportArrowFunctionThisCallback);
     wkcSetReportArrowFunctionCallbackPeer(ReportArrowFunctionCallback);
 
@@ -469,17 +493,35 @@ int main(int argc, char* argv[]) {
     CustomTimerEventHandler timer_event_handler;
 
     setenv("JSC_verboseCompilation", "yes", 1);
-    setenv("JSC_verboseExecutableAllocationFuzz", "yes", 1);
+    setenv("JSC_verboseFTLCompilation", "yes", 1);
+    setenv("JSC_logCompilationChanges", "yes", 1);
+    setenv("JSC_verboseCompilationQueue", "yes", 1);
+    setenv("JSC_optimizeNativeCalls", "yes", 1);
+    setenv("JSC_dumpObjectStatistics", "yes", 1);
+    setenv("JSC_dumpGeneratedBytecodes", "yes", 1);
+    setenv("JSC_validateBytecode", "yes", 1);
+    setenv("JSC_dumpDisassembly", "yes", 1);
+    setenv("JSC_safepointBeforeEachPhase", "yes", 1);
+    setenv("JSC_verboseOSR", "yes", 1);
+    setenv("JSC_verboseFTLOSRExit", "yes", 1);
+    setenv("JSC_verboseCallLink", "yes", 1);
+    setenv("JSC_reportCompileTimes", "yes", 1);
+    setenv("JSC_reportFTLCompileTimes", "yes", 1);
+    setenv("JSC_verboseCFA", "yes", 1);
+    setenv("JSC_verboseFTLToJSThunk", "yes", 1);
+    setenv("JSC_verboseFTLFailure", "yes", 1);
+    setenv("JSC_reportMustSucceedExecutableAllocations", "yes", 1);
+    setenv("JSC_verifyHeap", "yes", 1);
     setenv("JSC_useJIT", "no", 1);
-    setenv("JSC_useLLInt", "yes", 1);
+    setenv("JSC_useLLInt", "no", 1);
     setenv("JSC_verboseSanitizeStack", "yes", 1);
     setenv("JSC_logGC", "yes", 1);
-    setenv("JSC_useDollarVM", "yes", 1);
+    setenv("JSC_useDollarVM", "no", 1);
 
     // WebKitInitialize parameters
 
     size_t size_1mb = 0x100000;
-    size_t memory_size = size_1mb * 32;
+    size_t memory_size = size_1mb * 16;
     size_t physical_memory_size = memory_size;
     void *memory = __libnx_aligned_alloc(PAGE_ALIGN, memory_size);
     if(memory == nullptr) {
@@ -495,7 +537,42 @@ int main(int argc, char* argv[]) {
         finish();
     }
 
-    extLogf("WKC initialized! Available size: %zu, Max available block size: %zu, JS allocated block size: %zu", WKC::Heap::GetAvailableSize(), WKC::Heap::GetMaxAvailableBlockSize(), WKC::Heap::GetJSHeapAllocatedBlockBytes());
+    WKC::WKCPrefs::setSystemStrings(&g_system_strings);
+
+    extLogf("WKC initialized! Available size: %zu, Max available block size: %zu, JS allocated block size: %zu, free size in heap: %zu", WKC::Heap::GetAvailableSize(), WKC::Heap::GetMaxAvailableBlockSize(), WKC::Heap::GetJSHeapAllocatedBlockBytes(), WKC::Heap::GetStatisticsFreeSizeInHeap());
+
+    WKC::Heap::Statistics stats = {};
+    WKC::Heap::GetStatistics(&stats, 0);
+
+    extLogf("Heap statistics:");
+    extLogf("  Heap size: %zu", stats.heapSize);
+    extLogf("  Free size in heap: %zu", stats.freeSizeInHeap);
+    extLogf("  Free size in caches: %zu", stats.freeSizeInCaches);
+    extLogf("  Returned size: %zu", stats.returnedSize);
+    extLogf("  Page size: %zu", stats.pageSize);
+    extLogf("  Max free block size in heap: %zu", stats.maxFreeBlockSizeInHeap);
+    extLogf("  Class free size in caches: %zu", stats.classFreeSizeInCaches);
+    extLogf("  Class block size in caches: %zu", stats.classBlockSizeInCaches);
+    extLogf("  Page length: %zu", stats.pageLength);
+    extLogf("  Class in caches: %zu", stats.classInCaches);
+    extLogf("  Number of classes: %zu", stats.numClasses);
+    extLogf("  Each class assigned pages in caches: %zu", stats.eachClassAssignedPagesInCaches);
+    extLogf("  Each class thread free size in caches: %zu", stats.eachClassThreadFreeSizeInCaches);
+    extLogf("  Each class central free size in caches: %zu", stats.eachClassCentralFreeSizeInCaches);
+    extLogf("  Each class block size in caches: %zu", stats.eachClassBlockSizeInCaches);
+    extLogf("  Max pages: %zu", stats.maxPages);
+    extLogf("  Each page free size in heap: %zu", stats.eachPageFreeSizeInHeap);
+    extLogf("  Number of large free size: %zu", stats.numLargeFreeSize);
+    extLogf("  Max heap size: %zu", stats.maxHeapSize);
+    extLogf("  Large free size in heap: %zu", stats.largeFreeSizeInHeap);
+    extLogf("  Current heap usage: %zu", stats.currentHeapUsage);
+    extLogf("  Current physical memory usage: %zu", stats.currentPhysicalMemoryUsage);
+    extLogf("  Max heap usage: %zu", stats.maxHeapUsage);
+    extLogf("  Alloc failure count: %zu", stats.allocFailureCount);
+    extLogf("  Alloc failure min size: %zu", stats.allocFailureMinSize);
+    extLogf("  Alloc failure total size: %zu", stats.allocFailureTotalSize);
+
+    // test stuff
 
     extLogf("Running JSC test code...");
 

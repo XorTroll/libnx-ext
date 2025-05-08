@@ -13,6 +13,12 @@
 
 #define PAGE_ALIGN 0x1000
 
+#ifdef __cplusplus
+#define EXT_STATIC_ASSERT static_assert
+#else
+#define EXT_STATIC_ASSERT _Static_assert
+#endif
+
 extern void *__libnx_alloc(size_t size);
 extern void *__libnx_aligned_alloc(size_t align, size_t size);
 extern void __libnx_free(void *ptr);

@@ -171,6 +171,7 @@ Result ossInitialize(OssBrowserDllKind kind) {
 }
 
 void ossExit(void) {
+    symExit();
     ldExit();
     browserdllUnmount();
 }

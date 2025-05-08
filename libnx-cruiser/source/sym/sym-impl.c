@@ -9,8 +9,89 @@
 #include <reent.h>
 #include <errno.h>
 
+extern void *memset(void *ptr, int value, size_t num);
+extern char *strncpy(char *dest, const char *src, size_t num);
+extern int snprintf(char *str, size_t size, const char *format, ...);
+
+typedef struct {
+    Thread libnx_thread; u8 remaining[0x40 - sizeof(Thread)]; // u8 AllThreadsListNode_MultiWaitObjectList_Reserved[0x40];
+    u8 State;
+    u8 StackIsAliased;
+    u8 AutoRegistered;
+    u8 SuspendCount;
+    u16 BasePriority;
+    u16 Version;
+    void *OriginalStack;
+    void *Stack;
+    size_t StackSize;
+    void *Argument;
+    void *ThreadFunction;
+    void *CurrentFiber;
+    void *InitialFiber;
+    u8 TlsValueArray[0x100];
+    char ThreadNameBuffer[0x20];
+    char *ThreadNamePointer;
+    u32 CsThread;
+    u32 CvTHread;
+    Handle handle;
+    u8 LockHistory;
+    u64 ThreadId;
+} NnOsThreadType;
+static_assert(sizeof(NnOsThreadType) == 0x1C0);
+
+#define MAX_THREAD_COUNT 10
+NnOsThreadType *g_ThreadList[MAX_THREAD_COUNT];
+u32 g_ThreadListCount = 0;
+
+void AllocateThread(NnOsThreadType *thread) {
+    if(g_ThreadListCount >= MAX_THREAD_COUNT) {
+        extLogf("Thread list is full!");
+        diagAbortWithResult(MAKERESULT(Module_Cruiser, CruiserResult_CalledStubbedFakeSymbol));
+    }
+    g_ThreadList[g_ThreadListCount++] = thread;
+
+    thread->handle = thread->libnx_thread.handle;
+    thread->Argument = (void*)0xEEFF0011;
+    thread->ThreadFunction = (void*)0xAABBCCDD;
+    svcGetThreadId(&thread->ThreadId, thread->libnx_thread.handle);
+    snprintf(thread->ThreadNameBuffer, sizeof(thread->ThreadNameBuffer), "FakeThread_%ld", thread->ThreadId);
+    thread->ThreadNamePointer = thread->ThreadNameBuffer;
+
+    s32 prio;
+    svcGetThreadPriority(&prio, thread->libnx_thread.handle);
+    thread->BasePriority = prio - 28;
+
+    thread->State = 0;
+    thread->StackIsAliased = 0;
+    thread->AutoRegistered = 0;
+    thread->SuspendCount = 0;
+    thread->Version = 0;
+    thread->OriginalStack = thread->libnx_thread.stack_mem;
+    thread->Stack = thread->libnx_thread.stack_mirror;
+    thread->StackSize = thread->libnx_thread.stack_sz;
+}
+
+NX_INLINE void SetAllocatedThreadName(NnOsThreadType *thread, const char *name) {
+    strncpy(thread->ThreadNameBuffer, name, sizeof(thread->ThreadNameBuffer) - 1);
+}
+
+NX_INLINE NnOsThreadType *FindAllocatedThreadByHandle(Handle handle) {
+    for(u32 i = 0; i < g_ThreadListCount; i++) {
+        if(g_ThreadList[i]->handle == handle) {
+            return g_ThreadList[i];
+        }
+    }
+    
+    extLogf("Thread with handle %d not found!", handle);
+    diagAbortWithResult(MAKERESULT(Module_Cruiser, CruiserResult_CalledStubbedFakeSymbol));
+}
+
+NX_INLINE NnOsThreadType *GetCurrentAllocatedThread() {
+    return FindAllocatedThreadByHandle(threadGetCurHandle());
+}
+
 #define _SYM_LOGF(fmt, ...) ({ \
-    extLogf("[hwkc-fakesym-%p] " fmt, threadGetSelf(), ##__VA_ARGS__); \
+    extLogf("[hwkc-fakesym] (%s) " fmt, GetCurrentAllocatedThread()->ThreadNamePointer, ##__VA_ARGS__); \
 })
 
 #define _SYM_ABORTF(fmt, ...) ({ \
@@ -27,6 +108,19 @@
 SYM_SYMBOL void *stdout = NULL;
 SYM_SYMBOL void *stderr = NULL;
 SYM_SYMBOL void *stdin = NULL;
+
+extern int custom_setjmp(void *buf);
+extern void custom_longjmp(void *buf, int val);
+
+SYM_SYMBOL int setjmp(void *buf) {
+    _SYM_LOGF("setjmp called! buf=%p", buf);
+    return custom_setjmp(buf);
+}
+
+SYM_SYMBOL void longjmp(void *buf, int val) {
+    _SYM_LOGF("longjmp called! buf=%p, val=%d", buf, val);
+    custom_longjmp(buf, val);
+}
 
 SYM_SYMBOL void _ZNSt3__16__sortIRNS_6__lessIjjEEPjEEvT0_S5_T_(void *a, void *b) {
     _SYM_ABORTF("std::__sort<std::__less<uint,uint> &,uint *>(uint *,uint *,std::__less<uint,uint> &) called!");
@@ -434,20 +528,16 @@ SYM_SYMBOL void _ZN2nn2os13FinalizeEventEPNS0_9EventTypeE(void) {
     // TODO
 }
 
-SYM_SYMBOL void *_ZN2nn2os16GetCurrentThreadEv(void) {
+SYM_SYMBOL NnOsThreadType *_ZN2nn2os16GetCurrentThreadEv(void) {
     // _SYM_LOGF("nn::os::GetCurrentThread(void) called!");
-    return threadGetSelf();
+    const Handle handle = threadGetCurHandle();
+    return FindAllocatedThreadByHandle(handle);
 }
 
-SYM_SYMBOL s32 _ZN2nn2os17GetThreadPriorityEPKNS0_10ThreadTypeE(void *thread) {
+SYM_SYMBOL s32 _ZN2nn2os17GetThreadPriorityEPKNS0_10ThreadTypeE(NnOsThreadType *thread) {
     _SYM_LOGF("nn::os::GetThreadPriority(nn::os::ThreadType const*) called!");
     _SYM_LOGF("Thread: %p", thread);
-
-    Thread *our_thread = (Thread*)thread;
-    s32 prio;
-    svcGetThreadPriority(&prio, our_thread->handle);
-    _SYM_LOGF("Thread priority: %d", prio);
-    return prio - 28;
+    return thread->BasePriority;
 }
 
 SYM_SYMBOL u32 _ZN2nn2os20GetCurrentCoreNumberEv(void) {
@@ -487,26 +577,27 @@ SYM_SYMBOL void _ZN2nn2os15InitializeEventEPNS0_9EventTypeEbNS0_14EventClearMode
     ueventCreate(&our_event->uevent, clear_mode == NnOsEventClearMode_AutoClear);
 }
 
-SYM_SYMBOL Result _ZN2nn2os12CreateThreadEPNS0_10ThreadTypeEPFvPvES3_S3_mii(void *out_thread, void (*func)(void*), void *arg, void *stack, unsigned long stack_size, int priority, int core) {
+SYM_SYMBOL Result _ZN2nn2os12CreateThreadEPNS0_10ThreadTypeEPFvPvES3_S3_mii(NnOsThreadType *thread, void (*func)(void*), void *arg, void *stack, unsigned long stack_size, int priority, int core) {
     _SYM_LOGF("nn::os::CreateThread(nn::os::ThreadType *, void (*)(void *), void *, void *, unsigned long, int, int) called!");
-    _SYM_LOGF("Thread: %p, func: %p, arg: %p, stack: %p, stack_size: %lu, priority: %d, core: %d", out_thread, func, arg, stack, stack_size, priority, core);
+    _SYM_LOGF("Thread: %p, func: %p, arg: %p, stack: %p, stack_size: %lu, priority: %d, core: %d", thread, func, arg, stack, stack_size, priority, core);
 
-    Thread *our_thread = (Thread*)out_thread;
-    return threadCreate(our_thread, func, arg, stack, stack_size, priority + 28, core);
+    memset(thread, 0, sizeof(NnOsThreadType));
+    R_TRY(threadCreate(&thread->libnx_thread, func, arg, stack, stack_size, priority + 28, core));
+    AllocateThread(thread);
+    return R_SUCCESS;
 }
 
-SYM_SYMBOL void _ZN2nn2os13SetThreadNameEPNS0_10ThreadTypeEPKc(void *thread, const char *name) {
+SYM_SYMBOL void _ZN2nn2os13SetThreadNameEPNS0_10ThreadTypeEPKc(NnOsThreadType *thread, const char *name) {
     _SYM_LOGF("nn::os::SetThreadName(nn::os::ThreadType *, char const*) called!");
     _SYM_LOGF("Thread: %p, name: '%s'", thread, name);
-    // Stubbed out for now (how to implement this in a nice way?)
+    SetAllocatedThreadName(thread, name);
 }
 
-SYM_SYMBOL void _ZN2nn2os11StartThreadEPNS0_10ThreadTypeE(void *thread) {
+SYM_SYMBOL void _ZN2nn2os11StartThreadEPNS0_10ThreadTypeE(NnOsThreadType *thread) {
     _SYM_LOGF("nn::os::StartThread(nn::os::ThreadType *) called!");
     _SYM_LOGF("Thread: %p", thread);
 
-    Thread *our_thread = (Thread*)thread;
-    Result rc = threadStart(our_thread);
+    Result rc = threadStart(&thread->libnx_thread);
     if(R_SUCCEEDED(rc)) {
         _SYM_LOGF("Thread started successfully");
     }
@@ -653,4 +744,27 @@ void symInitialize(void) {
     stdout = __getreent()->_stdout;
     stderr = __getreent()->_stderr;
     stdin = __getreent()->_stdin;
+
+    // Prepare the main thread
+    Thread *main_thread = threadGetSelf();
+    NnOsThreadType *fake_main_thread = (NnOsThreadType*)malloc(sizeof(NnOsThreadType));
+    memset(fake_main_thread, 0, sizeof(NnOsThreadType));
+    fake_main_thread->libnx_thread = *main_thread;
+    AllocateThread(fake_main_thread);
+    SetAllocatedThreadName(fake_main_thread, "MainFakeThread");
+}
+
+void symExit(void) {
+    // Free our fake main thread
+    NnOsThreadType *fake_main_thread = g_ThreadList[0];
+    free(fake_main_thread);
+    for(u32 i = 0; i < g_ThreadListCount; i++) {
+        if(i > 0) {
+            NnOsThreadType *thread = g_ThreadList[i];
+            threadPause(&thread->libnx_thread);
+            threadClose(&thread->libnx_thread);
+        }
+        g_ThreadList[i] = NULL;
+    }
+    g_ThreadListCount = 0;
 }
