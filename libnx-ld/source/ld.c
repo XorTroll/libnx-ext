@@ -87,7 +87,7 @@ NX_INLINE uintptr_t _ldGetMainAslrBase(void) {
 static Result _ldPrepareNroModule(LdModule *mod, void *nro_buf, size_t nro_size) {
     // Create a fake NRR on-the-fly
     size_t nrr_size = 0x1000;
-    void *nrr_buf = __libnx_aligned_alloc(PAGE_ALIGN, nrr_size);
+    void *nrr_buf = __libnx_aligned_alloc(EXT_PAGE_ALIGN, nrr_size);
     if(!nrr_buf) {
         return MAKERESULT(Module_Ld, LdResult_InvalidInputNro);
     }
@@ -102,7 +102,7 @@ static Result _ldPrepareNroModule(LdModule *mod, void *nro_buf, size_t nro_size)
 
     // TODO: how to do this on earlier firmware?
     u64 program_id;
-    R_TRY(svcGetInfo(&program_id, InfoType_ProgramId, CUR_PROCESS_HANDLE, 0));
+    EXT_R_TRY(svcGetInfo(&program_id, InfoType_ProgramId, CUR_PROCESS_HANDLE, 0));
     nrr_header->program_id = program_id;
 
     u8 *nrr_nro_hash_ptr = (u8*)nrr_buf + LD_NRR_FIXED_HASH_LIST_OFFSET;
@@ -110,7 +110,7 @@ static Result _ldPrepareNroModule(LdModule *mod, void *nro_buf, size_t nro_size)
 
     NroHeader *nro_header = (NroHeader*)((u8*)nro_buf + sizeof(NroStart));
     size_t bss_size = nro_header->bss_size;
-    void *bss_buf = __libnx_aligned_alloc(PAGE_ALIGN, bss_size);
+    void *bss_buf = __libnx_aligned_alloc(EXT_PAGE_ALIGN, bss_size);
     if(!bss_buf) {
         __libnx_free(nrr_buf);
         return MAKERESULT(Module_Ld, LdResult_InvalidInputNro);
@@ -137,7 +137,7 @@ static Result _ldPrepareNroModule(LdModule *mod, void *nro_buf, size_t nro_size)
     mod->input.bss_buf = bss_buf;
     mod->input.base_addr = (void*)nro_addr;
     extLogf("[ld] NRO prepared at %p", mod->input.base_addr);
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }
 
 NX_INLINE LdModuleHeader *_ldGetModuleHeader(LdModule *mod) {
@@ -308,7 +308,7 @@ static Result _ldLoadModule(LdModule *mod) {
     }
 
     mod->rela_or_rel_plt.raw = rel_plt;
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }
 
 static void _ldRelocateModule(LdModule *mod) {
@@ -614,7 +614,7 @@ static Result _ldEnsureModuleInitialized(LdModule *mod) {
     }
     if(mod->state == LdModuleState_Initialized) {
         // extLogf("[ld] Module '%s' already initialized", mod->input.name);
-        return R_SUCCESS;
+        return EXT_R_SUCCESS;
     }
 
     if(mod->state == LdModuleState_Loaded) {
@@ -637,7 +637,7 @@ static Result _ldEnsureModuleInitialized(LdModule *mod) {
         extLogf("[ld] Module '%s' not correctly initialized, state %d", mod->input.name, mod->state);
         return MAKERESULT(Module_Ld, LdResult_InvalidModuleState);
     }
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }
 
 static Result _ldLoadMainModule() {
@@ -658,17 +658,17 @@ static Result _ldLoadMainModule() {
     main_mod->input.is_nro = false;
     main_mod->state = LdModuleState_Invalid;
 
-    R_TRY(_ldLoadModule(main_mod));
+    EXT_R_TRY(_ldLoadModule(main_mod));
 
     main_mod->state = LdModuleState_Loaded;
     g_ModuleList[g_ModuleCount] = main_mod;
     g_ModuleCount++;
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }
 
 Result ldInitialize(u32 max_modules) {
     if(g_Initialized) {
-        return R_SUCCESS;
+        return EXT_R_SUCCESS;
     }
 
     g_MaxModuleCount = max_modules;
@@ -678,10 +678,10 @@ Result ldInitialize(u32 max_modules) {
     }
     memset(g_ModuleList, 0, sizeof(LdModule*) * g_MaxModuleCount);
 
-    R_TRY(ldroInitialize());
-    R_TRY(_ldLoadMainModule());
+    EXT_R_TRY(ldroInitialize());
+    EXT_R_TRY(_ldLoadMainModule());
     g_Initialized = true;
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }
 
 void ldExit(void) {
@@ -720,14 +720,14 @@ Result ldLoadModuleFromNro(void *nro_buf, size_t nro_size, const char *name, boo
     mod->input.is_nro = true;
     mod->input.do_init_fini_array = do_init_fini_array;
 
-    R_TRY(_ldPrepareNroModule(mod, nro_buf, nro_size));
-    R_TRY(_ldLoadModule(mod));
+    EXT_R_TRY(_ldPrepareNroModule(mod, nro_buf, nro_size));
+    EXT_R_TRY(_ldLoadModule(mod));
     _ldRelocateModule(mod);
 
     mod->state = LdModuleState_Loaded;
     g_ModuleList[g_ModuleCount] = mod;
     g_ModuleCount++;
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }
 
 static void _ldDisposeModule(LdModule *mod) {
@@ -780,7 +780,7 @@ void ldUnloadAllModules(void) {
 Result ldLookupGlobalSymbol(const char *name, bool search_in_main, void **out_sym) {
     for(u32 i = 0; i < g_ModuleCount; i++) {
         LdModule *mod = g_ModuleList[i];
-        R_TRY(_ldEnsureModuleInitialized(mod));
+        EXT_R_TRY(_ldEnsureModuleInitialized(mod));
     }
 
     void *sym = (void*)_ldLookupGlobalSymbolAddress(name, search_in_main);
@@ -788,5 +788,5 @@ Result ldLookupGlobalSymbol(const char *name, bool search_in_main, void **out_sy
         return MAKERESULT(Module_Ld, LdResult_SymbolNotFound);
     }
     *out_sym = sym;
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }

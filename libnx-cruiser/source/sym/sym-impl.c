@@ -582,9 +582,9 @@ SYM_SYMBOL Result _ZN2nn2os12CreateThreadEPNS0_10ThreadTypeEPFvPvES3_S3_mii(NnOs
     _SYM_LOGF("Thread: %p, func: %p, arg: %p, stack: %p, stack_size: %lu, priority: %d, core: %d", thread, func, arg, stack, stack_size, priority, core);
 
     memset(thread, 0, sizeof(NnOsThreadType));
-    R_TRY(threadCreate(&thread->libnx_thread, func, arg, stack, stack_size, priority + 28, core));
+    EXT_R_TRY(threadCreate(&thread->libnx_thread, func, arg, stack, stack_size, priority + 28, core));
     AllocateThread(thread);
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }
 
 SYM_SYMBOL void _ZN2nn2os13SetThreadNameEPNS0_10ThreadTypeEPKc(NnOsThreadType *thread, const char *name) {

@@ -523,7 +523,7 @@ int main(int argc, char* argv[]) {
     size_t size_1mb = 0x100000;
     size_t memory_size = size_1mb * 16;
     size_t physical_memory_size = memory_size;
-    void *memory = __libnx_aligned_alloc(PAGE_ALIGN, memory_size);
+    void *memory = __libnx_aligned_alloc(EXT_PAGE_ALIGN, memory_size);
     if(memory == nullptr) {
         extLogf("Failed to allocate memory!");
         finish();

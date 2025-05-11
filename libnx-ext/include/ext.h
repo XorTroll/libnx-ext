@@ -2,16 +2,16 @@
 #pragma once
 #include <switch.h>
 
-#define R_SUCCESS 0
+#define EXT_R_SUCCESS 0
 
-#define R_TRY(expr) { \
+#define EXT_R_TRY(expr) { \
     Result rc = R_VALUE(expr); \
     if(R_FAILED(rc)) { \
         return rc; \
     } \
 }
 
-#define PAGE_ALIGN 0x1000
+#define EXT_PAGE_ALIGN 0x1000
 
 #ifdef __cplusplus
 #define EXT_STATIC_ASSERT static_assert

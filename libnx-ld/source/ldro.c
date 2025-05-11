@@ -16,9 +16,9 @@ NX_INLINE Result _ldroCmdInitialize(void) {
 }
 
 Result _ldroInitialize(void) {
-    R_TRY(smGetService(&g_RoService, LDRO_SERVICE_NAME));
-    R_TRY(_ldroCmdInitialize());
-    return R_SUCCESS;
+    EXT_R_TRY(smGetService(&g_RoService, LDRO_SERVICE_NAME));
+    EXT_R_TRY(_ldroCmdInitialize());
+    return EXT_R_SUCCESS;
 }
 
 void _ldroCleanup(void) {

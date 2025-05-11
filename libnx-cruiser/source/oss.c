@@ -105,7 +105,7 @@ static Result _ossLoadDecompressBrowserDllNro(OssBrowserDllKind kind, OssBrowser
     fseek(f, 0, SEEK_END);
     size_t nro_size = ftell(f);
     rewind(f);
-    void *nro_buf = __libnx_aligned_alloc(PAGE_ALIGN, nro_size);
+    void *nro_buf = __libnx_aligned_alloc(EXT_PAGE_ALIGN, nro_size);
     if(nro_buf == NULL) {
         fclose(f);
         return MAKERESULT(Module_Cruiser, CruiserResult_InvalidBrowserDllNro);
@@ -120,7 +120,7 @@ static Result _ossLoadDecompressBrowserDllNro(OssBrowserDllKind kind, OssBrowser
     if(!_ossIsBrowserDllNroLz4Compressed()) {
         *out_nro_buf = nro_buf;
         *out_nro_size = nro_size;
-        return R_SUCCESS;
+        return EXT_R_SUCCESS;
     }
 
     // Decompressed size is in the first 4 bytes of the LZ4 buffer
@@ -129,7 +129,7 @@ static Result _ossLoadDecompressBrowserDllNro(OssBrowserDllKind kind, OssBrowser
     size_t nro_lz4_base_size = nro_size - sizeof(u32);
     
     // Align it to 0x1000, as RO services will require later in module loading
-    void *nro_dec_buf = __libnx_aligned_alloc(PAGE_ALIGN, nro_dec_size);
+    void *nro_dec_buf = __libnx_aligned_alloc(EXT_PAGE_ALIGN, nro_dec_size);
     if(nro_dec_buf == NULL) {
         __libnx_free(nro_buf);
         return MAKERESULT(Module_Cruiser, CruiserResult_InvalidBrowserDllNro);
@@ -146,18 +146,18 @@ static Result _ossLoadDecompressBrowserDllNro(OssBrowserDllKind kind, OssBrowser
     *out_nro_buf = nro_dec_buf;
     *out_nro_size = dec_res;
     __libnx_free(nro_buf);
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }
 
 Result ossInitialize(OssBrowserDllKind kind) {
-    R_TRY(browserdllMount());
-    R_TRY(ldInitialize(10));
+    EXT_R_TRY(browserdllMount());
+    EXT_R_TRY(ldInitialize(10));
     symInitialize();
 
     for(u32 i = 0; i < OssBrowserDllNro_Count; i++) {
         void *nro_buf = NULL;
         size_t nro_size = 0;
-        R_TRY(_ossLoadDecompressBrowserDllNro(kind, i, &nro_buf, &nro_size));
+        EXT_R_TRY(_ossLoadDecompressBrowserDllNro(kind, i, &nro_buf, &nro_size));
 
         // Load each NRO module
         Result rc = ldLoadModuleFromNro(nro_buf, nro_size, g_BrowserDllNroNames[i], false);
@@ -167,7 +167,7 @@ Result ossInitialize(OssBrowserDllKind kind) {
         }
     }
 
-    return R_SUCCESS;
+    return EXT_R_SUCCESS;
 }
 
 void ossExit(void) {

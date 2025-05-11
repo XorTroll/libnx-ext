@@ -2,11 +2,11 @@
 
 Result browserdllMount(void) {
     if(browserdllIsMounted()) {
-        return R_SUCCESS;
+        return EXT_R_SUCCESS;
     }
 
-    R_TRY(romfsMountFromDataArchive(BROWSERDLL_DATA_ID, NcmStorageId_BuiltInSystem, BROWSERDLL_MOUNT_NAME));
-    return R_SUCCESS;
+    EXT_R_TRY(romfsMountFromDataArchive(BROWSERDLL_DATA_ID, NcmStorageId_BuiltInSystem, BROWSERDLL_MOUNT_NAME));
+    return EXT_R_SUCCESS;
 }
 
 bool browserdllIsMounted(void) {
