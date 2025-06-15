@@ -41,8 +41,8 @@ EXT_STATIC_ASSERT(sizeof(NsExtApplicationRecord) == 0x18);
 typedef enum {
     NsExtApplicationViewFlag_IsValid = BIT(0), // So far I have never seen this flag unset
     NsExtApplicationViewFlag_HasMainContents = BIT(1), // Games might have updates/DLC but not the main content
-    NsExtApplicationViewFlag_Bit2 = BIT(2),
-    NsExtApplicationViewFlag_Bit3 = BIT(3),
+    NsExtApplicationViewFlag_Bit2 = BIT(2), // unused in qlaunch
+    NsExtApplicationViewFlag_Bit3 = BIT(3), // unused in qlaunch
     NsExtApplicationViewFlag_HasContentsInstalled = BIT(4), // This flag is set for all installed applications with contents
     NsExtApplicationViewFlag_IsDownloading = BIT(5), // qlaunch calls GetApplicationViewDownloadErrorContext somewhere if this flag is set
     NsExtApplicationViewFlag_IsGameCard = BIT(6), // qlaunch calls EnsureGameCardAccess somewhere if this flag is set
@@ -50,19 +50,19 @@ typedef enum {
     NsExtApplicationViewFlag_CanLaunch = BIT(8), // qlaunch calls CheckApplicationLaunchVersion somewhere if this flag is set (and pctl ConfirmLaunchApplicationPermission somewhere else)
     NsExtApplicationViewFlag_NeedsUpdate = BIT(9), // qlaunch calls RequestApplicationUpdate somewhere if this flag is set, if IsValid is also set and if IsDownloading is not set
     NsExtApplicationViewFlag_CanLaunch2 = BIT(10), // Games seem to have set it along with CanLaunch
-    NsExtApplicationViewFlag_Bit11 = BIT(11),
-    NsExtApplicationViewFlag_Bit12 = BIT(12),
+    NsExtApplicationViewFlag_Bit11 = BIT(11), // unused in qlaunch
+    NsExtApplicationViewFlag_Bit12 = BIT(12), // unused in qlaunch
     NsExtApplicationViewFlag_NeedsVerify = BIT(13), // Games which need to be verified by qlaunch (due to corrupted data/etc) have this flag set
     NsExtApplicationViewFlag_IsWaitingCommit1 = BIT(14), // I guess, from "OptCntUpdate_DlgBodyWaitCommit" texts used if these flags are all set
-    NsExtApplicationViewFlag_IsWaitingCommit2 = BIT(15),
+    NsExtApplicationViewFlag_IsWaitingCommit2 = BIT(15), // I guess, from "OptCntUpdate_DlgBodyWaitCommit" texts used if these flags are all set
     NsExtApplicationViewFlag_Bit16 = BIT(16),
     NsExtApplicationViewFlag_IsApplyingDelta = BIT(17), // I guess, from "IsApplyingDelta" text used if this flag is set
-    NsExtApplicationViewFlag_IsWaitingCommit3 = BIT(18),
-    NsExtApplicationViewFlag_Bit19 = BIT(19),
-    NsExtApplicationViewFlag_Bit20 = BIT(20),
+    NsExtApplicationViewFlag_IsWaitingCommit3 = BIT(18), // I guess, from "OptCntUpdate_DlgBodyWaitCommit" texts used if these flags are all set
+    NsExtApplicationViewFlag_Bit19 = BIT(19), // unused in qlaunch
+    NsExtApplicationViewFlag_Bit20 = BIT(20), // unused in qlaunch
     NsExtApplicationViewFlag_Bit23 = BIT(23),
     NsExtApplicationViewFlag_Bit21 = BIT(21),
-    NsExtApplicationViewFlag_Bit22 = BIT(22), // PromotionInfo related?
+    NsExtApplicationViewFlag_HasPromotion = BIT(22), // qlaunch checks this flag if the app has a valid PromotionInfo
 } NsExtApplicationViewFlag;
 
 typedef struct {

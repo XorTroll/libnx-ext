@@ -6,17 +6,17 @@ typedef union {
     struct {
         u64 app_id_be;
         u64 key_gen_be;
-    };
-    FsRightsId id;
+    } id;
+    FsRightsId fs_id;
 } EsRightsId;
 EXT_STATIC_ASSERT(sizeof(EsRightsId) == 0x10);
 
 NX_CONSTEXPR u64 esGetRightsIdApplicationId(const EsRightsId *id) {
-    return __builtin_bswap64(id->app_id_be);
+    return __builtin_bswap64(id->id.app_id_be);
 }
 
 NX_CONSTEXPR u8 esGetRightsIdKeyGeneration(const EsRightsId *id) {
-    return (u8)(__builtin_bswap64(id->key_gen_be) & 0xFF);
+    return (u8)(__builtin_bswap64(id->id.key_gen_be) & 0xFF);
 }
 
 Result esInitialize(void);
