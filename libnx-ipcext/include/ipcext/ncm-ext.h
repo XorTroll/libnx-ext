@@ -27,4 +27,4 @@ typedef struct {
     u8 pad[4];
 } NcmExtDeltaMetaExtendedHeader;
 
-Result ncmextReadApplicationControlDataManual(SetLanguage lang, u64 application_id, NsApplicationControlData* buffer, size_t size, u64* actual_size);
+Result ncmextReadApplicationControlDataManual(SetLanguage lang, u64 application_id, NsApplicationControlData *out_control_data, size_t size, size_t *actual_size, SetLanguage *out_lang);

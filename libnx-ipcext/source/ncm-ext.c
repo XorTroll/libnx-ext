@@ -2,25 +2,18 @@
 #include "ipcext/result.h"
 #include <string.h>
 
-static Result _ncmextGetApplicationControlContentPath(NcmStorageId id, u64 application_id, char *out_path) {
+static Result _ncmextGetApplicationControlContentPath(NcmStorageId id, u64 app_or_patch_id, char *out_path) {
     NcmContentMetaDatabase meta_db;
     EXT_R_TRY(ncmOpenContentMetaDatabase(&meta_db, id));
     NcmContentStorage storage;
     EXT_R_TRY(ncmOpenContentStorage(&storage, id));
 
     NcmContentMetaKey key;
-    s32 total;
-    s32 written;
-    Result rc = ncmContentMetaDatabaseList(&meta_db, &total, &written, &key, 1, NcmContentMetaType_Application, application_id, application_id, application_id, NcmContentInstallType_Full);
+    Result rc = ncmContentMetaDatabaseGetLatestContentMetaKey(&meta_db, &key, app_or_patch_id);
     if(R_FAILED(rc)) {
         ncmContentMetaDatabaseClose(&meta_db);
         ncmContentStorageClose(&storage);
         return rc;
-    }
-    if(written != 1) {
-        ncmContentMetaDatabaseClose(&meta_db);
-        ncmContentStorageClose(&storage);
-        return MAKERESULT(Module_LibnxIpcExt, LibnxIpcExtError_ControlNotFound);
     }
 
     NcmContentId control_id;
@@ -98,13 +91,19 @@ NX_CONSTEXPR const char *_ncmextGetControlIconPath(SetLanguage lang) {
     }
 }
 
-Result ncmextReadApplicationControlDataManual(SetLanguage lang, u64 application_id, NsApplicationControlData* buffer, size_t size, u64* actual_size) {
+Result ncmextReadApplicationControlDataManual(SetLanguage lang, u64 application_id, NsApplicationControlData *out_control_data, size_t size, size_t *actual_size, SetLanguage *out_lang) {
     if(size < sizeof(NsApplicationControlData)) {
         return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     }
-    
+
+    u64 patch_id = application_id ^ 0x800;
     char control_path[FS_MAX_PATH];
-    if(R_FAILED(_ncmextGetApplicationControlContentPath(NcmStorageId_SdCard, application_id, control_path)) && R_FAILED(_ncmextGetApplicationControlContentPath(NcmStorageId_BuiltInUser, application_id, control_path))) {
+    if(R_FAILED(_ncmextGetApplicationControlContentPath(NcmStorageId_SdCard, patch_id, control_path))
+    && R_FAILED(_ncmextGetApplicationControlContentPath(NcmStorageId_BuiltInUser, patch_id, control_path))
+    && R_FAILED(_ncmextGetApplicationControlContentPath(NcmStorageId_GameCard, patch_id, control_path))
+    && R_FAILED(_ncmextGetApplicationControlContentPath(NcmStorageId_SdCard, application_id, control_path))
+    && R_FAILED(_ncmextGetApplicationControlContentPath(NcmStorageId_BuiltInUser, application_id, control_path))
+    && R_FAILED(_ncmextGetApplicationControlContentPath(NcmStorageId_GameCard, application_id, control_path))) {
         return MAKERESULT(Module_LibnxIpcExt, LibnxIpcExtError_ControlNotFound);
     }
 
@@ -112,21 +111,37 @@ Result ncmextReadApplicationControlDataManual(SetLanguage lang, u64 application_
     EXT_R_TRY(fsOpenFileSystemWithId(&control_fs, application_id, FsFileSystemType_ContentControl, control_path, FsContentAttributes_All));
 
     size_t nacp_size;
-    Result rc = _ncmextReadFile(&control_fs, "/control.nacp", &buffer->nacp, sizeof(buffer->nacp), &nacp_size);
+    Result rc = _ncmextReadFile(&control_fs, "/control.nacp", &out_control_data->nacp, sizeof(out_control_data->nacp), &nacp_size);
     if(R_FAILED(rc)) {
         fsFsClose(&control_fs);
         return rc;
     }
-    if(nacp_size != sizeof(buffer->nacp)) {
+    if(nacp_size != sizeof(out_control_data->nacp)) {
         fsFsClose(&control_fs);
         return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     }
 
     size_t icon_size;
-    rc = _ncmextReadFile(&control_fs, _ncmextGetControlIconPath(lang), buffer->icon, sizeof(buffer->icon), &icon_size);
+    rc = _ncmextReadFile(&control_fs, _ncmextGetControlIconPath(lang), out_control_data->icon, sizeof(out_control_data->icon), &icon_size);
     if(R_FAILED(rc)) {
-        fsFsClose(&control_fs);
-        return rc;
+        // The icon might not be present, so try every single language until we find one that exists
+        bool found_icon = false;
+        for(SetLanguage l = SetLanguage_JA; l < SetLanguage_Total; l++) {
+            rc = _ncmextReadFile(&control_fs, _ncmextGetControlIconPath(l), out_control_data->icon, sizeof(out_control_data->icon), &icon_size);
+            if(R_SUCCEEDED(rc)) {
+                *out_lang = l;
+                found_icon = true;
+                break;
+            }
+        }
+
+        if(!found_icon) {
+            fsFsClose(&control_fs);
+            return rc;
+        }
+    }
+    else {
+        *out_lang = lang;
     }
 
     *actual_size = nacp_size + icon_size;
