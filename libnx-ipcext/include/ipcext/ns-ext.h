@@ -105,6 +105,7 @@ typedef struct {
 } NsExtApplicationOccupiedSize;
 EXT_STATIC_ASSERT(sizeof(NsExtApplicationOccupiedSize) == 0x80);
 
+Result nsextGetApplicationControlData(NsApplicationControlSource source, u64 application_id, NsApplicationControlData *buffer, size_t size, u64 *actual_size);
 Result nsextPushApplicationRecord(const u64 app_id, const NsExtApplicationEvent last_event, const NsExtContentStorageMetaKey *cnt_storage_record_buf, const size_t cnt_storage_record_buf_count);
 Result nsextListApplicationRecordContentMeta(const u64 offset, const u64 app_id, NsExtContentStorageMetaKey *out_buf, const size_t out_buf_count, u32 *out_count);
 Result nsextDeleteApplicationRecord(const u64 app_id);

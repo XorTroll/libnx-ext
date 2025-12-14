@@ -74,3 +74,45 @@ Result nsextPushLaunchVersion(const u64 app_id, const u32 launch_version) {
     _nsextDisposeApplicationManagerInterfaceService(&srv);
     return rc;
 }
+
+// NS control data
+
+Result nsGetApplicationControlData3(NsApplicationControlSource source, u64 application_id, NsApplicationControlData* buffer, size_t size, u8 flag1, u8 flag2, u64* actual_size) {
+    if (hosversionBefore(21,0,0))
+        return MAKERESULT(Module_Libnx, LibnxError_IncompatSysVer);
+    Service srv={0}, *srv_ptr = &srv;
+    Result rc=0;
+    u32 cmd_id = 6;
+    rc = nsGetReadOnlyApplicationControlDataInterface(&srv);
+
+    const struct {
+        u8 source;
+        u8 flags[2];
+        u8 pad[5];
+        u64 application_id;
+    } in = { source, {flag1, flag2}, {0}, application_id };
+
+    u32 tmp[3];
+
+    if (R_SUCCEEDED(rc)) rc = serviceDispatchInOut(srv_ptr, 19, in, tmp,
+        .buffer_attrs = { SfBufferAttr_HipcMapAlias | SfBufferAttr_Out },
+        .buffers = { { buffer, size } },
+    );
+    if (R_SUCCEEDED(rc)) {
+        if (actual_size) *actual_size = tmp[2];
+    }
+
+    serviceClose(&srv);
+    return rc;
+}
+Result nsextGetApplicationControlData(NsApplicationControlSource source, u64 application_id, NsApplicationControlData *buffer, size_t size, u64 *actual_size) {
+    if(hosversionAtLeast(21,0,0)) {
+        return nsGetApplicationControlData3(source, application_id, buffer, size, 0xFF, 0, actual_size);
+    }
+    else if(hosversionAtLeast(19,0,0)) {
+        return nsGetApplicationControlData2(source, application_id, buffer, size, 0xFF, 0, actual_size, NULL);
+    }
+    else {
+        return nsGetApplicationControlData(source, application_id, buffer, size, actual_size);
+    }
+}
