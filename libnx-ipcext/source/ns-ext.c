@@ -82,7 +82,6 @@ Result nsGetApplicationControlData3(NsApplicationControlSource source, u64 appli
         return MAKERESULT(Module_Libnx, LibnxError_IncompatSysVer);
     Service srv={0}, *srv_ptr = &srv;
     Result rc=0;
-    u32 cmd_id = 6;
     rc = nsGetReadOnlyApplicationControlDataInterface(&srv);
 
     const struct {
